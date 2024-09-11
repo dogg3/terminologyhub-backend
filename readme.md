@@ -43,8 +43,6 @@ This occurs on a weekly basis, impacting almost every project phase—from plann
 - **Terminology Analysis**: Automatically scans different platforms for conflicting terms.
 - **Agentic Workflow**: Uses CrewAI to delegate and resolve conflicts in terminology through agent collaboration.
 - **Real-time Suggestions**: Proposes common, unified terms based on context and team feedback.
-- **Feedback Integration**: Periodically gathers feedback to refine future suggestions.
-
 ---
 
 ## Tech Stack
