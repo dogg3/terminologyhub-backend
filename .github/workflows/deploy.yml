@@ -29,9 +29,10 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-    - name: Authenticate Docker with GCR (Europe)
+    - name: Authenticate Docker with Artifact Registry (Europe)
       run: |
-        gcloud auth configure-docker eu.gcr.io
+        gcloud auth configure-docker europe-west1-docker.pkg.dev
+
 
     - name: Build Docker image
       run: |
