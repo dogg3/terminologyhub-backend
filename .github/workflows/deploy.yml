@@ -51,13 +51,8 @@ jobs:
         docker buildx build --platform linux/amd64 -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --push .
         # Build and push Docker image with the commit SHA as a tag for version tracking.
 
-    # Deploy the Docker image to Google Cloud Run
     - name: Deploy to Google Cloud Run
       run: |
-        gcloud auth configure-docker ${{ env.REGISTRY }}  # Re-authenticate just in case
-        gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-          --platform managed \
-          --region europe-west2 \
-          --allow-unauthenticated \
-          --min-instances 1
+        gcloud auth configure-docker ${{ env.REGISTRY }}
+        gcloud run deploy  ${{env.SERVICE_NAME}} --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --platform managed --region europe-west2 --allow-unauthenticated --min-instances 1
+        # Deploy the Docker image to Google Cloud Run
