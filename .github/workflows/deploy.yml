@@ -3,7 +3,7 @@ name: Deploy to Google Cloud Run
 on:
   push:
     branches:
-    - main  # or the branch of your choice
+    - main  # or your desired branch
 
 jobs:
   build-and-deploy:
@@ -18,26 +18,28 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies with Pipenv
+    - name: Install dependencies using Pipenv
       run: |
         pip install pipenv
         pipenv install --system --deploy
 
     - name: Build Docker image
       run: |
-        docker build -t gcr.io/$GCP_PROJECT_ID/fastapi-app .
+        # Check if GCP_PROJECT_ID is properly set
+        echo "Project ID: $GCP_PROJECT_ID"
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/fastapi-app .
 
     - name: Log in to Google Container Registry
       run: echo ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }} | docker login -u _json_key --password-stdin https://gcr.io
 
     - name: Push Docker image
       run: |
-        docker push gcr.io/$GCP_PROJECT_ID/fastapi-app
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/fastapi-app
 
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy fastapi-app \
-          --image gcr.io/$GCP_PROJECT_ID/fastapi-app \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/fastapi-app \
           --platform managed \
           --region europe-west1 \  # Adjust to your preferred region
           --allow-unauthenticated \
