@@ -63,6 +63,7 @@ This occurs on a weekly basis, impacting almost every project phase—from plann
 - **Pipenv** for managing dependencies
 - **Docker** (optional, for containerized deployment)
 
+
 ### Steps
 
 1. Clone the repository:
