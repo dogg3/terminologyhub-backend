@@ -9,6 +9,8 @@ env:
   REGISTRY: europe-west2-docker.pkg.dev
   IMAGE_NAME: ${{ secrets.GCP_PROJECT_ID }}/docker-repository/pythonserver
   SERVICE_NAME: pythonserver
+  WORKLOAD_IDENTITY_PROVIDER: 'projects/1000521913987/locations/global/workloadIdentityPools/my-app-dev-pool/providers/github-actions-provider'
+
 
 jobs:
   build-and-deploy:
@@ -28,7 +30,7 @@ jobs:
       with:
         token_format: access_token
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-        workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+        workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
         service_account: ${{ secrets.GCP_SA_EMAIL }}  # Service account email linked to the Workload Identity provider
 
     # Login to Google Artifact Registry (GAR)
