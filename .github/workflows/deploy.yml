@@ -23,16 +23,23 @@ jobs:
         pip install pipenv
         pipenv install --system --deploy
 
+    - name: Install Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    - name: Authenticate Docker with GCR
+      run: |
+        gcloud auth configure-docker gcr.io
+
     - name: Build Docker image
       run: |
         # Check if GCP_PROJECT_ID is properly set
         echo "Project ID: $GCP_PROJECT_ID"
         docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/fastapi-app .
 
-    - name: Log in to Google Container Registry
-      run: echo ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }} | docker login -u _json_key --password-stdin https://gcr.io
-
-    - name: Push Docker image
+    - name: Push Docker image to GCR
       run: |
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/fastapi-app
 
@@ -44,5 +51,3 @@ jobs:
           --region europe-west1 \  # Adjust to your preferred region
           --allow-unauthenticated \
           --project $GCP_PROJECT_ID
-      env:
-        GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
