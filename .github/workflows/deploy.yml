@@ -29,9 +29,9 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-    - name: Authenticate Docker with GCR
+    - name: Authenticate Docker with GCR (Europe)
       run: |
-        gcloud auth configure-docker
+        gcloud auth configure-docker eu.gcr.io
 
     - name: Build Docker image
       run: |
