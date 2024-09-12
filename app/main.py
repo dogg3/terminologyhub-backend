@@ -71,9 +71,11 @@ class Term(BaseModel):
     all_used_terms: List[str]
     status: str
 
-class ResolveRequest(BaseModel):
+class SetPreferredTermRequest(BaseModel):
     preferred_term: str
-    description: str
+
+class UpdateUsedTermsRequest(BaseModel):
+    all_used_terms: List[str]
 
 # Root endpoint
 @app.get("/")
@@ -118,9 +120,9 @@ def get_term(term_id: int):
     else:
         raise HTTPException(status_code=404, detail="Term not found")
 
-# Endpoint to resolve a term by updating its status and preferred term
-@app.post("/terms/{term_id}/resolve")
-def resolve_term(term_id: int, resolve_request: ResolveRequest):
+# Endpoint to set the preferred term for a term
+@app.put("/terms/{term_id}/preferred_term")
+def set_preferred_term(term_id: int, request: SetPreferredTermRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -132,15 +134,76 @@ def resolve_term(term_id: int, resolve_request: ResolveRequest):
         conn.close()
         raise HTTPException(status_code=404, detail="Term not found")
 
-    # Update the term with the preferred term and description
-    all_used_terms = resolve_request.preferred_term
+    all_used_terms = row["all_used_terms"].split(",")
+    if request.preferred_term not in all_used_terms:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Preferred term must be one of the all_used_terms")
+
+    # Update the term with the preferred term
     cursor.execute('''
         UPDATE terms
-        SET description = ?, all_used_terms = ?, status = "Resolved"
+        SET all_used_terms = ?
         WHERE id = ?
-    ''', (resolve_request.description, all_used_terms, term_id))
+    ''', (request.preferred_term, term_id))
 
     conn.commit()
     conn.close()
 
-    return {"message": "Term resolved successfully"}
+    return {"message": "Preferred term updated successfully"}
+
+# Endpoint to update the all_used_terms list for a term
+@app.put("/terms/{term_id}/update_terms")
+def update_used_terms(term_id: int, request: UpdateUsedTermsRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if the term exists
+    cursor.execute("SELECT * FROM terms WHERE id = ?", (term_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Term not found")
+
+    # Update the all_used_terms list
+    cursor.execute('''
+        UPDATE terms
+        SET all_used_terms = ?
+        WHERE id = ?
+    ''', (",".join(request.all_used_terms), term_id))
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "all_used_terms updated successfully"}
+
+# Pydantic model for creating a new term
+class CreateTermRequest(BaseModel):
+    description: str
+    all_used_terms: List[str]
+    status: str
+
+# Endpoint to add a new term
+@app.post("/terms", response_model=Term)
+def add_term(term_request: CreateTermRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Insert the new term into the terms table
+    cursor.execute('''
+        INSERT INTO terms (description, all_used_terms, status)
+        VALUES (?, ?, ?)
+    ''', (term_request.description, ",".join(term_request.all_used_terms), term_request.status))
+
+    # Get the newly created term ID
+    new_term_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    # Return the new term
+    return Term(
+        id=new_term_id,
+        description=term_request.description,
+        all_used_terms=term_request.all_used_terms,
+        status=term_request.status
+    )
