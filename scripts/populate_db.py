@@ -32,13 +32,13 @@ def populate_db():
         sample_data = [
             ("First concept description", "first_term,primary_term", "first_term", "resolved"),
             ("Second concept description", "second_term,secondary_term", "second_term", "resolved"),
-            ("Third concept description", "third_term,tertiary_term", None, "not resolved"),
+            ("Third concept description", "third_term,tertiary_term", "", "not resolved"),
             ("Fourth concept description", "fourth_term,quaternary_term", "fourth_term", "resolved"),
-            ("Fifth concept description", "fifth_term,quinary_term", None, "not resolved"),
+            ("Fifth concept description", "fifth_term,quinary_term", "", "not resolved"),
             ("Sixth concept description", "sixth_term,senary_term", "sixth_term", "resolved"),
-            ("Seventh concept description", "seventh_term,septenary_term", None, "not resolved"),
+            ("Seventh concept description", "seventh_term,septenary_term", "", "not resolved"),
             ("Eighth concept description", "eighth_term,octonary_term", "octonary_term", "resolved"),
-            ("Ninth concept description", "ninth_term,nonary_term", None, "not resolved"),
+            ("Ninth concept description", "ninth_term,nonary_term", "", "not resolved"),
             ("Tenth concept description", "tenth_term,denary_term", "tenth_term", "resolved")
         ]
 

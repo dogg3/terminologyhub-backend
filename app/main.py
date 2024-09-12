@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import sqlite3
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -82,7 +82,7 @@ class Concept(BaseModel):
     id: int
     description: str
     terms: List[str]
-    preferred_term: str  # New field for the preferred term
+    preferred_term: Optional[str]  # New field for the preferred term
     status: str  # Now "resolved" or "not resolved" depending on the preferred term
 
 class SetPreferredTermRequest(BaseModel):
