@@ -1,5 +1,7 @@
 import sqlite3
 import os
+from random import randint
+
 
 # Function to populate the database with sample data
 def populate_db():
@@ -61,6 +63,7 @@ def populate_db():
         print(f"SQLite error occurred: {db_error}")
     except Exception as ex:
         print(f"An error occurred: {ex}")
+
 
 # Call the function to populate the database
 populate_db()

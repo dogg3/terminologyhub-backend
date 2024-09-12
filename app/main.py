@@ -1,5 +1,4 @@
 import os
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -8,6 +7,7 @@ import sqlite3
 # Initialize FastAPI app
 app = FastAPI()
 
+# Function to get a database connection
 def get_db_connection():
     try:
         db_path = "/tmp/terminology_hub.db"
@@ -18,6 +18,51 @@ def get_db_connection():
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
 
+# Function to create the terms table
+def create_terms_table():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS terms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            description TEXT NOT NULL,
+            all_used_terms TEXT NOT NULL,
+            status TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Function to populate the terms table with sample data
+def populate_terms_table():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if the table already has data
+    cursor.execute("SELECT COUNT(*) FROM terms")
+    count = cursor.fetchone()[0]
+    if count == 0:
+        sample_data = [
+            ("First term description", "first_term,primary_term", "active"),
+            ("Second term description", "second_term,secondary_term", "inactive"),
+            ("Third term description", "third_term,tertiary_term", "active")
+        ]
+        cursor.executemany('''
+            INSERT INTO terms (description, all_used_terms, status)
+            VALUES (?, ?, ?)
+        ''', sample_data)
+        conn.commit()
+        print("Sample data inserted into terms table.")
+    else:
+        print("Terms table already populated.")
+
+    conn.close()
+
+# Ensure the table is created and populated on app startup
+@app.on_event("startup")
+def startup_event():
+    create_terms_table()
+    populate_terms_table()
 
 # Pydantic models for input and output data
 class Term(BaseModel):
