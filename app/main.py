@@ -76,145 +76,210 @@ def startup_event():
     populate_terms_table()
 
 # Pydantic models for input and output data
-class Term(BaseModel):
+class Concept(BaseModel):
     id: int
     description: str
-    all_used_terms: List[str]
-    status: str
+    terms: List[str]
+    preferred_term: str  # New field for the preferred term
+    status: str  # Now "resolved" or "not resolved" depending on the preferred term
 
 class SetPreferredTermRequest(BaseModel):
     preferred_term: str
 
-class UpdateUsedTermsRequest(BaseModel):
-    all_used_terms: List[str]
+class UpdateTermsRequest(BaseModel):
+    terms: List[str]
 
-# Root endpoint
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+# Endpoint to get all concepts
+@app.get("/all-concepts", response_model=List[Concept], summary="Retrieve all concepts", description="Fetch all concepts with their descriptions, associated terms, preferred terms, and statuses.")
+def get_all_concepts():
+    """
+    Fetch all concepts stored in the database.
 
-# Endpoint to get all terms
-@app.get("/terms", response_model=List[Term])
-def get_all_terms():
+    - **Returns:** A list of all concepts, including their descriptions, associated terms, preferred terms, and status (resolved or not).
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM terms")
+    cursor.execute("SELECT * FROM concepts")
     rows = cursor.fetchall()
     conn.close()
 
-    terms = []
+    concepts = []
     for row in rows:
-        terms.append(Term(
+        status = "resolved" if row["preferred_term"] else "not resolved"
+        concepts.append(Concept(
             id=row["id"],
             description=row["description"],
-            all_used_terms=row["all_used_terms"].split(","),
-            status=row["status"]
+            terms=row["terms"].split(","),
+            preferred_term=row["preferred_term"],  # Return preferred term
+            status=status  # Status depends on the preferred term
         ))
-    return terms
+    return concepts
 
-# Endpoint to get a specific term by ID
-@app.get("/terms/{term_id}", response_model=Term)
-def get_term(term_id: int):
+# Endpoint to get a specific concept by ID
+@app.get("/concept/{concept_id}", response_model=Concept, summary="Retrieve a specific concept by ID", description="Fetch the details of a specific concept by its unique ID, including its description, terms, preferred term, and status.")
+def get_concept(concept_id: int):
+    """
+    Fetch a specific concept by its ID.
+
+    - **concept_id:** The unique ID of the concept to retrieve.
+    - **Returns:** The full details of the concept, including its description, terms, preferred term, and status (resolved or not).
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM terms WHERE id = ?", (term_id,))
+    cursor.execute("SELECT * FROM concepts WHERE id = ?", (concept_id,))
     row = cursor.fetchone()
     conn.close()
 
     if row:
-        return Term(
+        status = "resolved" if row["preferred_term"] else "not resolved"
+        return Concept(
             id=row["id"],
             description=row["description"],
-            all_used_terms=row["all_used_terms"].split(","),
-            status=row["status"]
+            terms=row["terms"].split(","),
+            preferred_term=row["preferred_term"],  # Return preferred term
+            status=status  # Status depends on the preferred term
         )
     else:
-        raise HTTPException(status_code=404, detail="Term not found")
+        raise HTTPException(status_code=404, detail="Concept not found")
 
-# Endpoint to set the preferred term for a term
-@app.put("/terms/{term_id}/preferred_term")
-def set_preferred_term(term_id: int, request: SetPreferredTermRequest):
+# Endpoint to resolve a concept by its name
+@app.get("/resolve-concept/{concept_name}", response_model=Concept, summary="Resolve a concept by name", description="Retrieve a concept by resolving a given name against any associated terms in the system.")
+def resolve_concept(concept_name: str):
+    """
+    Resolve a concept by matching its name with the associated terms.
+
+    - **concept_name:** The name or term used to resolve the concept.
+    - **Returns:** The concept that matches the provided term, including its preferred term and status.
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check if the term exists
-    cursor.execute("SELECT * FROM terms WHERE id = ?", (term_id,))
+    # Query to find a concept where concept_name matches any of the terms
+    cursor.execute("SELECT * FROM concepts WHERE terms LIKE ?", (f"%{concept_name}%",))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        status = "resolved" if row["preferred_term"] else "not resolved"
+        return Concept(
+            id=row["id"],
+            description=row["description"],
+            terms=row["terms"].split(","),
+            preferred_term=row["preferred_term"],  # Return preferred term
+            status=status  # Status depends on the preferred term
+        )
+    else:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+# Endpoint to set the preferred term for a concept
+@app.put("/concept/{concept_id}/preferred-term", summary="Set preferred term for a concept", description="Set the preferred term for a specific concept by its ID. The preferred term must be one of the associated terms.")
+def set_preferred_term(concept_id: int, request: SetPreferredTermRequest):
+    """
+    Set the preferred term for a specific concept.
+
+    - **concept_id:** The unique ID of the concept to update.
+    - **preferred_term:** The preferred term to set for the concept (must be one of the associated terms).
+    - **Returns:** A success message upon completion, and marks the concept as resolved.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if the concept exists
+    cursor.execute("SELECT * FROM concepts WHERE id = ?", (concept_id,))
     row = cursor.fetchone()
 
     if not row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Term not found")
+        raise HTTPException(status_code=404, detail="Concept not found")
 
-    all_used_terms = row["all_used_terms"].split(",")
-    if request.preferred_term not in all_used_terms:
+    terms = row["terms"].split(",")
+    if request.preferred_term not in terms:
         conn.close()
-        raise HTTPException(status_code=400, detail="Preferred term must be one of the all_used_terms")
+        raise HTTPException(status_code=400, detail="Preferred term must be one of the terms")
 
-    # Update the term with the preferred term
+    # Update the concept with the preferred term
     cursor.execute('''
-        UPDATE terms
-        SET all_used_terms = ?
+        UPDATE concepts
+        SET preferred_term = ?
         WHERE id = ?
-    ''', (request.preferred_term, term_id))
+    ''', (request.preferred_term, concept_id))
 
     conn.commit()
     conn.close()
 
     return {"message": "Preferred term updated successfully"}
 
-# Endpoint to update the all_used_terms list for a term
-@app.put("/terms/{term_id}/update_terms")
-def update_used_terms(term_id: int, request: UpdateUsedTermsRequest):
+# Endpoint to update the terms list for a concept
+@app.put("/concept/{concept_id}/update-terms", summary="Update terms for a concept", description="Update the list of terms associated with a specific concept by its ID.")
+def update_used_terms(concept_id: int, request: UpdateTermsRequest):
+    """
+    Update the list of terms associated with a specific concept.
+
+    - **concept_id:** The unique ID of the concept to update.
+    - **terms:** The new list of terms to associate with the concept.
+    - **Returns:** A success message upon completion.
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check if the term exists
-    cursor.execute("SELECT * FROM terms WHERE id = ?", (term_id,))
+    # Check if the concept exists
+    cursor.execute("SELECT * FROM concepts WHERE id = ?", (concept_id,))
     row = cursor.fetchone()
 
     if not row:
         conn.close()
-        raise HTTPException(status_code=404, detail="Term not found")
+        raise HTTPException(status_code=404, detail="Concept not found")
 
-    # Update the all_used_terms list
+    # Update the terms list
     cursor.execute('''
-        UPDATE terms
-        SET all_used_terms = ?
+        UPDATE concepts
+        SET terms = ?
         WHERE id = ?
-    ''', (",".join(request.all_used_terms), term_id))
+    ''', (",".join(request.terms), concept_id))
 
     conn.commit()
     conn.close()
 
-    return {"message": "all_used_terms updated successfully"}
+    return {"message": "Terms updated successfully"}
 
-# Pydantic model for creating a new term
-class CreateTermRequest(BaseModel):
+# Pydantic model for creating a new concept
+class CreateConceptRequest(BaseModel):
     description: str
-    all_used_terms: List[str]
+    terms: List[str]
+    preferred_term: str  # New field for the preferred term
     status: str
 
-# Endpoint to add a new term
-@app.post("/terms", response_model=Term)
-def add_term(term_request: CreateTermRequest):
+# Endpoint to add a new concept
+@app.post("/concepts", response_model=Concept, summary="Add a new concept", description="Add a new concept to the system, providing its description, associated terms, preferred term, and status.")
+def add_concept(concept_request: CreateConceptRequest):
+    """
+    Add a new concept to the system.
+
+    - **description:** A brief description of the concept.
+    - **terms:** A list of associated terms for the concept.
+    - **preferred_term:** The preferred term for this concept.
+    - **status:** Whether the concept is "resolved" or "not resolved".
+    - **Returns:** The newly created concept, including its ID, description, terms, preferred term, and status.
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Insert the new term into the terms table
+    # Insert the new concept into the concepts table
     cursor.execute('''
-        INSERT INTO terms (description, all_used_terms, status)
-        VALUES (?, ?, ?)
-    ''', (term_request.description, ",".join(term_request.all_used_terms), term_request.status))
+        INSERT INTO concepts (description, terms, preferred_term, status)
+        VALUES (?, ?, ?, ?)
+    ''', (concept_request.description, ",".join(concept_request.terms), concept_request.preferred_term, concept_request.status))
 
-    # Get the newly created term ID
-    new_term_id = cursor.lastrowid
+    # Get the newly created concept ID
+    new_concept_id = cursor.lastrowid
     conn.commit()
     conn.close()
 
-    # Return the new term
-    return Term(
-        id=new_term_id,
-        description=term_request.description,
-        all_used_terms=term_request.all_used_terms,
-        status=term_request.status
+    # Return the new concept
+    return Concept(
+        id=new_concept_id,
+        description=concept_request.description,
+        terms=concept_request.terms,
+        preferred_term=concept_request.preferred_term,
+        status=concept_request.status
     )
