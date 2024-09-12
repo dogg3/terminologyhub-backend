@@ -6,11 +6,14 @@ import sqlite3
 # Initialize FastAPI app
 app = FastAPI()
 
-# Define the database connection function
 def get_db_connection():
-    conn = sqlite3.connect("terminology_hub.db")  # Path to your SQLite DB
-    conn.row_factory = sqlite3.Row  # Return rows as dictionaries
-    return conn
+    try:
+        conn = sqlite3.connect("terminology_hub.db")
+        conn.row_factory = sqlite3.Row
+        return conn
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+
 
 # Pydantic models for input and output data
 class Term(BaseModel):
