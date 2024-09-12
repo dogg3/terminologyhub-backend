@@ -144,34 +144,42 @@ def get_concept(concept_id: int):
     else:
         raise HTTPException(status_code=404, detail="Concept not found")
 
-# Endpoint to resolve a concept by its name
-@app.get("/resolve-concept/{concept_name}", response_model=Concept, summary="Resolve a concept by name", description="Retrieve a concept by resolving a given name against any associated terms in the system.")
-def resolve_concept(concept_name: str):
+
+# Request model for updating status
+class UpdateStatusRequest(BaseModel):
+    status: str  # The status to update, e.g., "resolved" or "not resolved"
+
+@app.put("/update-status/{concept_name}", response_model=str, summary="Update concept status by name", description="Update the status of a concept by resolving a given name against any associated terms.")
+def update_concept_status(concept_name: str, request: UpdateStatusRequest):
     """
-    Resolve a concept by matching its name with the associated terms.
+    Update the status of a concept by matching its name with the associated terms.
 
     - **concept_name:** The name or term used to resolve the concept.
-    - **Returns:** The concept that matches the provided term, including its preferred term and status.
+    - **status:** The new status for the concept (can be any valid status).
+    - **Returns:** A success message indicating the status update.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Query to find a concept where concept_name matches any of the terms
+    # Query to find the concept where concept_name matches any of the terms
     cursor.execute("SELECT * FROM concepts WHERE terms LIKE ?", (f"%{concept_name}%",))
     row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+    # Update the concept status
+    cursor.execute('''
+        UPDATE concepts
+        SET status = ?
+        WHERE id = ?
+    ''', (request.status, row["id"]))
+
+    conn.commit()
     conn.close()
 
-    if row:
-        status = "resolved" if row["preferred_term"] else "not resolved"
-        return Concept(
-            id=row["id"],
-            description=row["description"],
-            terms=row["terms"].split(","),
-            preferred_term=row["preferred_term"],  # Return preferred term
-            status=status  # Status depends on the preferred term
-        )
-    else:
-        raise HTTPException(status_code=404, detail="Concept not found")
+    return f"Concept status updated to {request.status}"
 
 # Endpoint to set the preferred term for a concept
 @app.put("/concept/{concept_id}/preferred-term", summary="Set preferred term for a concept", description="Set the preferred term for a specific concept by its ID. The preferred term must be one of the associated terms.")
