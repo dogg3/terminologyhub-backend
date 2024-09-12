@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -8,7 +10,9 @@ app = FastAPI()
 
 def get_db_connection():
     try:
-        conn = sqlite3.connect("terminology_hub.db")
+        db_path = "./tmp/terminology_hub.db"
+        print(f"Connecting to database at: {os.path.abspath(db_path)}")  # Print the full path for debugging
+        conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:

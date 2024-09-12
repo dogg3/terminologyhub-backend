@@ -1,45 +1,66 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
 import sqlite3
+import os
 
 # Function to populate the database with sample data
 def populate_db():
-    # Connect to the database
-    conn = sqlite3.connect("terminology_hub.db")
-    cursor = conn.cursor()
+    db_path = "./tmp/terminology_hub.db"  # Change this to your local db path if needed
+    print(f"Connecting to database at {db_path}")
 
-    # Fetch the term from the database
-    cursor.execute("SELECT * FROM terms WHERE id = ?", (term_id,))
-    row = cursor.fetchone()
+    try:
+        # Check if the file exists
+        if not os.path.exists(db_path):
+            raise FileNotFoundError(f"Error: Database file not found at {db_path}")
 
-    if not row:
+        # Connect to the SQLite database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Create the terms table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS terms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                description TEXT NOT NULL,
+                all_used_terms TEXT NOT NULL,
+                status TEXT NOT NULL
+            )
+        ''')
+
+        # Sample terms to insert into the database
+        sample_data = [
+            ("First term description", "first_term,primary_term", "active"),
+            ("Second term description", "second_term,secondary_term", "inactive"),
+            ("Third term description", "third_term,tertiary_term", "active")
+        ]
+
+        # Insert the sample data into the terms table
+        cursor.executemany('''
+            INSERT INTO terms (description, all_used_terms, status)
+            VALUES (?, ?, ?)
+        ''', sample_data)
+
+        # Check if the data was inserted successfully
+        cursor.execute("SELECT * FROM terms")
+        rows = cursor.fetchall()
+
+        if rows:
+            print("Sample data inserted successfully:")
+            for row in rows:
+                print(row)
+        else:
+            print("No data found after insertion.")
+
+        # Commit the transaction and close the connection
+        conn.commit()
         conn.close()
-        raise HTTPException(status_code=404, detail="Term not found")
 
-    # Get the `all_used_terms` as a list
-    all_used_terms = row["all_used_terms"].split(",")
+        print("Database populated with sample terms.")
 
-    # Check if the term exists in the list
-    if term not in all_used_terms:
-        conn.close()
-        raise HTTPException(status_code=404, detail=f"Term '{term}' not found in all_used_terms")
+    except FileNotFoundError as e:
+        print(e)
+    except sqlite3.Error as db_error:
+        print(f"SQLite error occurred: {db_error}")
+    except Exception as ex:
+        print(f"An error occurred: {ex}")
 
-    # Remove the specified term
-    all_used_terms.remove(term)
-
-    # Convert the list back to a comma-separated string
-    updated_all_used_terms = ",".join(all_used_terms)
-
-    # Update the database
-    cursor.execute('''
-        UPDATE terms
-        SET all_used_terms = ?
-        WHERE id = ?
-    ''', (updated_all_used_terms, term_id))
-
-    conn.commit()
-    conn.close()
-
-    return {"message": f"Term '{term}' removed from all_used_terms", "updated_terms": updated_all_used_terms}
-
+# Call the function to populate the database
+populate_db()

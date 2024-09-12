@@ -1,5 +1,5 @@
 # Variables
-DB_FILE=terminology_hub.db
+DB_FILE=tmp/terminology_hub.db
 MIGRATION_DIR=migrations
 POPULATE_SCRIPT=scripts/populate_db.py
 UVICORN_CMD=uvicorn app.main:app --reload
