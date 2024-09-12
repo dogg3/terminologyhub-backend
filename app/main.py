@@ -11,11 +11,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or the specific URL of your frontend
+    allow_origins=["http://localhost:3000"],  # Add the URL of your frontend
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Content-Type", "Authorization"],  # Add more headers if necessary
+    allow_headers=["*"],
 )
+
 
 
 # Function to get a database connection
