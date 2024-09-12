@@ -30,51 +30,52 @@ def get_db_connection():
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
 
-# Function to create the terms table
-def create_terms_table():
+# Function to create the concepts table
+def create_concepts_table():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS terms (
+        CREATE TABLE IF NOT EXISTS concepts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             description TEXT NOT NULL,
-            all_used_terms TEXT NOT NULL,
-            status TEXT NOT NULL
+            terms TEXT NOT NULL,  -- Stored as a comma-separated string
+            preferred_term TEXT,  -- Preferred term for the concept
+            status TEXT NOT NULL  -- 'resolved' or 'not resolved'
         )
     ''')
     conn.commit()
     conn.close()
 
-# Function to populate the terms table with sample data
-def populate_terms_table():
+# Function to populate the concepts table with sample data
+def populate_concepts_table():
     conn = get_db_connection()
     cursor = conn.cursor()
 
     # Check if the table already has data
-    cursor.execute("SELECT COUNT(*) FROM terms")
+    cursor.execute("SELECT COUNT(*) FROM concepts")
     count = cursor.fetchone()[0]
     if count == 0:
         sample_data = [
-            ("First term description", "first_term,primary_term", "active"),
-            ("Second term description", "second_term,secondary_term", "inactive"),
-            ("Third term description", "third_term,tertiary_term", "active")
+            ("First concept description", "first_term,primary_term", "first_term", "resolved"),
+            ("Second concept description", "second_term,secondary_term", "second_term", "resolved"),
+            ("Third concept description", "third_term,tertiary_term", None, "not resolved")
         ]
         cursor.executemany('''
-            INSERT INTO terms (description, all_used_terms, status)
-            VALUES (?, ?, ?)
+            INSERT INTO concepts (description, terms, preferred_term, status)
+            VALUES (?, ?, ?, ?)
         ''', sample_data)
         conn.commit()
-        print("Sample data inserted into terms table.")
+        print("Sample data inserted into concepts table.")
     else:
-        print("Terms table already populated.")
+        print("Concepts table already populated.")
 
     conn.close()
 
 # Ensure the table is created and populated on app startup
 @app.on_event("startup")
 def startup_event():
-    create_terms_table()
-    populate_terms_table()
+    create_concepts_table()
+    populate_concepts_table()
 
 # Pydantic models for input and output data
 class Concept(BaseModel):

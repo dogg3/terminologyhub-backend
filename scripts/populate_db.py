@@ -17,31 +17,39 @@ def populate_db():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Create the terms table if it doesn't exist
+        # Create the concepts table if it doesn't exist
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS terms (
+            CREATE TABLE IF NOT EXISTS concepts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 description TEXT NOT NULL,
-                all_used_terms TEXT NOT NULL,
-                status TEXT NOT NULL
+                terms TEXT NOT NULL,  -- Stored as a comma-separated string
+                preferred_term TEXT,  -- Preferred term for the concept
+                status TEXT NOT NULL  -- 'resolved' or 'not resolved'
             )
         ''')
 
-        # Sample terms to insert into the database
+        # Sample concepts to insert into the database
         sample_data = [
-            ("First term description", "first_term,primary_term", "active"),
-            ("Second term description", "second_term,secondary_term", "inactive"),
-            ("Third term description", "third_term,tertiary_term", "active")
+            ("First concept description", "first_term,primary_term", "first_term", "resolved"),
+            ("Second concept description", "second_term,secondary_term", "second_term", "resolved"),
+            ("Third concept description", "third_term,tertiary_term", None, "not resolved"),
+            ("Fourth concept description", "fourth_term,quaternary_term", "fourth_term", "resolved"),
+            ("Fifth concept description", "fifth_term,quinary_term", None, "not resolved"),
+            ("Sixth concept description", "sixth_term,senary_term", "sixth_term", "resolved"),
+            ("Seventh concept description", "seventh_term,septenary_term", None, "not resolved"),
+            ("Eighth concept description", "eighth_term,octonary_term", "octonary_term", "resolved"),
+            ("Ninth concept description", "ninth_term,nonary_term", None, "not resolved"),
+            ("Tenth concept description", "tenth_term,denary_term", "tenth_term", "resolved")
         ]
 
-        # Insert the sample data into the terms table
+        # Insert the sample data into the concepts table
         cursor.executemany('''
-            INSERT INTO terms (description, all_used_terms, status)
-            VALUES (?, ?, ?)
+            INSERT INTO concepts (description, terms, preferred_term, status)
+            VALUES (?, ?, ?, ?)
         ''', sample_data)
 
         # Check if the data was inserted successfully
-        cursor.execute("SELECT * FROM terms")
+        cursor.execute("SELECT * FROM concepts")
         rows = cursor.fetchall()
 
         if rows:
@@ -55,7 +63,7 @@ def populate_db():
         conn.commit()
         conn.close()
 
-        print("Database populated with sample terms.")
+        print("Database populated with sample concepts.")
 
     except FileNotFoundError as e:
         print(e)

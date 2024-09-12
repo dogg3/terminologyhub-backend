@@ -13,6 +13,8 @@ COPY Pipfile Pipfile.lock ./
 # Install dependencies via Pipenv
 RUN pipenv install --system --deploy
 
+
+
 # Copy the application code into the container
 COPY app /app
 
